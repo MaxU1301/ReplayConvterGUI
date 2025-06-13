@@ -9,7 +9,8 @@ class ReplayConverterApp:
     """
     A GUI application for LMI's ReplayConverter.exe tool with an improved visual design.
     """
-    SETTINGS_FILE = 'replay_converter_settings.json'
+    APP_NAME = "ReplayConverterGUI"
+    SETTINGS_FILENAME = "replay_converter_settings.json"
 
     def __init__(self, root):
         """
@@ -24,7 +25,11 @@ class ReplayConverterApp:
 
         # --- Instance Variables ---
         self.command_parts = []
+        # Determine and set up the settings file path
+        self.app_data_dir = os.path.join(os.path.expanduser("~"), f".{self.APP_NAME}")
+        self.settings_file_path = os.path.join(self.app_data_dir, self.SETTINGS_FILENAME)
         self.settings = self.load_settings()
+
         self._processing_output_entry_change = False # Flag to prevent recursion
 
         # --- Style Configuration ---
@@ -179,16 +184,32 @@ class ReplayConverterApp:
 
     def load_settings(self):
         """Loads settings from JSON, returns defaults if not found."""
+        # Ensure the application data directory exists
+        if not os.path.exists(self.app_data_dir):
+            try:
+                os.makedirs(self.app_data_dir)
+            except OSError as e:
+                print(f"Warning: Could not create settings directory {self.app_data_dir}: {e}")
+                # Fallback to default settings without trying to load from a file
+                return {"converter_path": "", "pcd_width": "0", "pcd_height": "0",
+                        "pcd_swap": False, "pcd_zoom": "1.0", "pcd_remove": False}
         try:
-            with open(self.SETTINGS_FILE, 'r') as f:
+            with open(self.settings_file_path, 'r') as f:
                 return json.load(f)
         except (FileNotFoundError, json.JSONDecodeError):
+            # File not found or invalid JSON, return defaults. File will be created on first save.
             return {"converter_path": "", "pcd_width": "0", "pcd_height": "0",
                     "pcd_swap": False, "pcd_zoom": "1.0", "pcd_remove": False}
 
     def save_settings(self):
         """Saves current settings to the JSON file."""
-        with open(self.SETTINGS_FILE, 'w') as f:
+        if not os.path.exists(self.app_data_dir):
+            try:
+                os.makedirs(self.app_data_dir)
+            except OSError as e:
+                messagebox.showerror("Error", f"Could not create settings directory:\n{self.app_data_dir}\n\nSettings not saved.")
+                return
+        with open(self.settings_file_path, 'w') as f:
             json.dump(self.settings, f, indent=4)
 
     def browse_input_file(self):
@@ -523,7 +544,7 @@ class ReplayConverterApp:
         self.settings["pcd_remove"] = self.pcd_remove_var.get()
         
         self.save_settings()
-        messagebox.showinfo("Saved", "Settings have been saved.", parent=self.settings_window)
+        messagebox.showinfo("Saved", f"Settings have been saved to:\n{self.settings_file_path}", parent=self.settings_window)
         self.settings_window.destroy()
         self.update_command_display()
 

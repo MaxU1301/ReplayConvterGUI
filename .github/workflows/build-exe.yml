@@ -1,0 +1,41 @@
+name: Build Python Executable
+
+on: [push]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x' # Specify your Python version
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller ttkthemes
+          # If you have a requirements.txt, you can install it here:
+          # pip install -r requirements.txt
+
+      - name: Build executable with PyInstaller
+        run: |
+          pyinstaller --name ReplayConverterGUI ^
+                      --onefile ^
+                      --windowed ^
+                      --icon=NONE ^
+                      # If your settings file is in src/ and you want to bundle a default version:
+                      # --add-data "src/replay_converter_settings.json:." ^
+                      src/main.py
+        # Note: PyInstaller usually handles ttkthemes data files automatically.
+        # If themes are missing in the .exe, you might need to find the ttkthemes path
+        # and add it using --add-data, e.g., --add-data "path/to/ttkthemes/themes:ttkthemes/themes"
+
+      - name: Upload executable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ReplayConverterGUI-Windows
+          path: dist/ReplayConverterGUI.exe # Path to the generated .exe

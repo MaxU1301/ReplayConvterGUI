@@ -23,13 +23,7 @@ jobs:
 
       - name: Build executable with PyInstaller
         run: |
-          pyinstaller --name ReplayConverterGUI `
-                      --onefile `
-                      --windowed `
-                      --icon=NONE `
-                      # If your settings file is in src/ and you want to bundle a default version:
-                      # --add-data "src/replay_converter_settings.json:." `
-                      src/main.py
+          pyinstaller --name ReplayConverterGUI --onefile --windowed --icon=NONE src/main.py
         # Note: PyInstaller usually handles ttkthemes data files automatically.
         # If themes are missing in the .exe, you might need to find the ttkthemes path
         # and add it using --add-data, e.g., --add-data "path/to/ttkthemes/themes:ttkthemes/themes"

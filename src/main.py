@@ -477,30 +477,8 @@ class ReplayConverterApp:
         self.settings_window.transient(self.root)
         self.settings_window.grab_set()
         
-        # Apply the same theme and styles to settings window
-        settings_style = ttk.Style(self.settings_window)
-        
-        # Configure accent button style for settings window
-        settings_style.configure('Accent.TButton',
-                                font=('Segoe UI', 10, 'bold'),
-                                relief='flat',
-                                borderwidth=1,
-                                focuscolor='none',
-                                darkcolor='#0078D4',
-                                lightcolor='#0078D4',
-                                bordercolor='#0078D4')
-        
-        settings_style.map('Accent.TButton',
-                          background=[('active', '#005A9E'),
-                                      ('pressed', '#004578'),
-                                      ('!disabled', '#0078D4')],
-                          foreground=[('active', 'white'),
-                                      ('pressed', 'white'),
-                                      ('!disabled', 'white')],
-                          bordercolor=[('active', '#005A9E'),
-                                       ('pressed', '#004578'),
-                                       ('!disabled', '#0078D4')])
-
+        # Styles are inherited from the root window, including ThemedTk theme
+        # and custom styles like 'Accent.TButton' defined in setup_styles.
         settings_frame = ttk.Frame(self.settings_window, padding="20")
         settings_frame.pack(expand=True, fill='both')
 

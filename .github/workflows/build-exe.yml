@@ -42,7 +42,7 @@ jobs:
           $zip_file_name = "$base_name.zip" # e.g., ReplayConverterGUI-x64.zip
           $zip_file_path = "dist/$zip_file_name" # e.g., dist/ReplayConverterGUI-x64.zip
 
-          pyinstaller --name $base_name --onedir --windowed --icon=src/icon.png --target-arch=${{ matrix.pyinstaller_target_arch }} src/main.py
+          pyinstaller --name $base_name --onedir --windowed --icon=src/icon.png --add-data "src/icon.png:." --target-arch=${{ matrix.pyinstaller_target_arch }} src/main.py
 
           # Create a zip of the output directory created by PyInstaller
           Compress-Archive -Path $full_pyinstaller_output_dir_path -DestinationPath $zip_file_path -Force

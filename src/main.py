@@ -2,8 +2,21 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import subprocess
 import os
+import sys # Added for resource_path
 import json
 from ttkthemes import ThemedTk
+
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        # Not frozen, or _MEIPASS not available.
+        # In development, __file__ is in src/, and icon.png is also in src/
+        base_path = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base_path, relative_path)
+
 
 class ReplayConverterApp:
     """
@@ -25,16 +38,19 @@ class ReplayConverterApp:
 
         # Set application icon
         try:
-            # Assumes icon.png is in the same directory as main.py (the src directory)
-            icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icon.png")
-            if os.path.exists(icon_path):
-                self.app_icon = tk.PhotoImage(file=icon_path) # Keep a reference
+            # Use resource_path to find icon.png correctly in dev and frozen states
+            # "icon.png" is the relative path from base_path (src/ for dev, _MEIPASS/ for frozen)
+            icon_path_resolved = resource_path("icon.png")
+            if os.path.exists(icon_path_resolved):
+                self.app_icon = tk.PhotoImage(file=icon_path_resolved) # Keep a reference
                 self.root.iconphoto(True, self.app_icon)
             else:
-                print(f"Warning: Application icon 'icon.png' not found in {os.path.dirname(os.path.abspath(__file__))}")
+                print(f"Warning: Application icon 'icon.png' not found at resolved path: {icon_path_resolved}")
         except tk.TclError as e:
             # Handle cases where the icon format might not be supported or other Tk errors
             print(f"Warning: Could not set application icon: {e}")
+        except Exception as e: # Catch other potential errors during icon loading
+            print(f"An unexpected error occurred while setting application icon: {e}")
 
         # --- Instance Variables ---
         self.command_parts = []

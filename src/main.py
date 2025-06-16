@@ -145,6 +145,15 @@ class ReplayConverterApp:
         style.configure('TLabelFrame', padding=10)
         style.configure('TLabelFrame.Label', font=font_label, foreground='#00529B')
         
+        # Style the Combobox dropdown list
+        # The main TCombobox widget generally follows the theme, but the dropdown list (a Listbox)
+        # often needs explicit option_add for consistent styling.
+        self.root.option_add('*TCombobox*Listbox.font', font_body)
+        self.root.option_add('*TCombobox*Listbox.background', '#FFFFFF') # Use a light background
+        self.root.option_add('*TCombobox*Listbox.foreground', '#212121') # Standard text color
+        self.root.option_add('*TCombobox*Listbox.selectBackground', '#0078D4') # Accent color for selection
+        self.root.option_add('*TCombobox*Listbox.selectForeground', 'white')    # White text for selection
+
         # Create a custom element for the accent button
         try:
             style.element_create("accent.button.border", "from", "default")
@@ -195,24 +204,37 @@ class ReplayConverterApp:
                   darkcolor=[('!disabled', '#0078D4')],
                   lightcolor=[('!disabled', '#0078D4')])
 
+    def _get_default_settings(self):
+        """Returns a dictionary with default settings."""
+        return {
+            "converter_path": "",
+            "pcd_width": "0",
+            "pcd_height": "0",
+            "pcd_swap": False,
+            "pcd_zoom": "1.0",
+            "pcd_remove": False
+        }
+
     def load_settings(self):
         """Loads settings from JSON, returns defaults if not found."""
+        default_settings = self._get_default_settings()
         # Ensure the application data directory exists
         if not os.path.exists(self.app_data_dir):
             try:
                 os.makedirs(self.app_data_dir)
             except OSError as e:
                 print(f"Warning: Could not create settings directory {self.app_data_dir}: {e}")
-                # Fallback to default settings without trying to load from a file
-                return {"converter_path": "", "pcd_width": "0", "pcd_height": "0",
-                        "pcd_swap": False, "pcd_zoom": "1.0", "pcd_remove": False}
+                return default_settings
         try:
             with open(self.settings_file_path, 'r') as f:
-                return json.load(f)
+                loaded_settings = json.load(f)
+                # Merge loaded settings with defaults to ensure all keys are present
+                settings = default_settings.copy()
+                settings.update(loaded_settings)
+                return settings
         except (FileNotFoundError, json.JSONDecodeError):
             # File not found or invalid JSON, return defaults. File will be created on first save.
-            return {"converter_path": "", "pcd_width": "0", "pcd_height": "0",
-                    "pcd_swap": False, "pcd_zoom": "1.0", "pcd_remove": False}
+            return default_settings
 
     def save_settings(self):
         """Saves current settings to the JSON file."""
@@ -341,12 +363,29 @@ class ReplayConverterApp:
     def update_command_display(self, event=None):
         """Builds the command for execution and updates the preview text area."""
         error_messages = [] 
-        
+
+        converter_path_val = self.settings.get("converter_path")
+        input_file_val = self.input_file_var.get()
+        output_file_base_val = self.output_file_var.get()
+        output_format_val = self.output_format_dropdown.get()
+
+        # --- Determine PCD arguments if applicable ---
+        pcd_args = []
+        if output_format_val == '.pcd':
+            pcd_width = self.settings.get('pcd_width', '0')
+            pcd_height = self.settings.get('pcd_height', '0')
+            pcd_swap = self.settings.get('pcd_swap', False)
+            pcd_zoom = self.settings.get('pcd_zoom', '1.0')
+            pcd_remove = self.settings.get('pcd_remove', False)
+
+            if pcd_width != '0': pcd_args.extend(("-w", pcd_width))
+            if pcd_height != '0': pcd_args.extend(("-h", pcd_height))
+            if pcd_swap: pcd_args.append("-s")
+            if pcd_zoom != '1.0': pcd_args.extend(("-z", pcd_zoom))
+            if pcd_remove: pcd_args.append("-r")
+
         # --- Build parts for DISPLAY PREVIEW ---
         display_parts_for_preview = []
-        
-        # Converter Path
-        converter_path_val = self.settings.get("converter_path")
         if converter_path_val:
             display_parts_for_preview.append(converter_path_val)
         else:
@@ -354,7 +393,6 @@ class ReplayConverterApp:
             error_messages.append("Error: Path to ReplayConverter.exe is not set. Please go to Settings.")
 
         # Input File
-        input_file_val = self.input_file_var.get()
         if input_file_val:
             display_parts_for_preview.extend(['-i', input_file_val])
         else:
@@ -371,24 +409,14 @@ class ReplayConverterApp:
                  error_messages.append("Warning: Frame index is empty when 'Export all frames' is unchecked.")
 
         # Output File Name and Format
-        # self.output_file_var should ideally contain just the base name due to handle_output_file_entry_change
-        output_file_base_val = self.output_file_var.get()
-        output_format_val = self.output_format_dropdown.get()
-
         if output_file_base_val:
             display_parts_for_preview.extend(['-o', f"{output_file_base_val}{output_format_val}"])
         else:
-            # Show structure in preview even if output name is empty
-            display_parts_for_preview.extend(['-o', f"[OUTPUT_NAME]{output_format_val}"]) 
+            display_parts_for_preview.extend(['-o', f"[OUTPUT_NAME]{output_format_val}"])
             error_messages.append("Warning: Output file name is not specified.")
 
-        # PCD Options (dependent on final output_format_val)
-        if output_format_val == '.pcd':
-            if self.settings.get('pcd_width', '0') != '0': display_parts_for_preview.extend(("-w", self.settings['pcd_width']))
-            if self.settings.get('pcd_height', '0') != '0': display_parts_for_preview.extend(("-h", self.settings['pcd_height']))
-            if self.settings.get('pcd_swap', False): display_parts_for_preview.append("-s")
-            if self.settings.get('pcd_zoom', '1.0') != '1.0': display_parts_for_preview.extend(("-z", self.settings['pcd_zoom']))
-            if self.settings.get('pcd_remove', False): display_parts_for_preview.append("-r")
+        # Add PCD arguments to preview
+        display_parts_for_preview.extend(pcd_args)
 
         # Generate the display string, quoting paths for readability
         quoted_display_list = []
@@ -406,7 +434,7 @@ class ReplayConverterApp:
         if error_messages:
             self.command_text.insert(tk.END, f"\n" + "\n".join(error_messages), "error")
         
-        # --- Build self.command_parts for EXECUTION ---
+        # --- Build self.command_parts for EXECUTION (re-use validated values) ---
         self.command_parts = [] 
         if converter_path_val and input_file_val: # Critical parts must be present
             self.command_parts.append(converter_path_val)
@@ -418,23 +446,18 @@ class ReplayConverterApp:
                 frame_index_val_exec = self.frame_index_var.get()
                 if frame_index_val_exec: # Basic check, could add isdigit validation
                     self.command_parts.extend(['-f', frame_index_val_exec])
-                else: 
-                    # Not exporting all, and no frame index: invalid state for execution
+                else:
                     self.command_parts = [] # Invalidate command for execution
 
             # Only add output and PCD options if command is still valid and output name is provided
-            if self.command_parts:
+            if self.command_parts: # Check if still valid after primary args
                 if output_file_base_val:
                     self.command_parts.extend(['-o', f"{output_file_base_val}{output_format_val}"])
                 else:
                     self.command_parts = [] # Output name is crucial for execution
 
-                if self.command_parts and output_format_val == '.pcd': 
-                    if self.settings.get('pcd_width', '0') != '0': self.command_parts.extend(("-w", self.settings['pcd_width']))
-                    if self.settings.get('pcd_height', '0') != '0': self.command_parts.extend(("-h", self.settings['pcd_height']))
-                    if self.settings.get('pcd_swap', False): self.command_parts.append("-s")
-                    if self.settings.get('pcd_zoom', '1.0') != '1.0': self.command_parts.extend(("-z", self.settings['pcd_zoom']))
-                    if self.settings.get('pcd_remove', False): self.command_parts.append("-r")
+                if self.command_parts: # Check if still valid after output option
+                    self.command_parts.extend(pcd_args) # Add PCD args to execution command
         else: # Critical parts (converter path or input file) were missing
             self.command_parts = []
 

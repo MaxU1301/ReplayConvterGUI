@@ -36,17 +36,26 @@ jobs:
       - name: Build executable with PyInstaller for ${{ matrix.arch }}
         id: build_exe
         run: |
-          $exe_name = "ReplayConverterGUI-${{ matrix.output_suffix }}"
-          pyinstaller --name $exe_name --onefile --windowed --icon=src/icon.png --target-arch=${{ matrix.pyinstaller_target_arch }} src/main.py
-          echo "EXE_NAME=$exe_name.exe" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-          echo "EXE_PATH=dist/$exe_name.exe" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          $base_name = "ReplayConverterGUI-${{ matrix.output_suffix }}"
+          $pyinstaller_output_dir_name = $base_name # PyInstaller creates a dir with this name in --onedir mode
+          $full_pyinstaller_output_dir_path = "dist/$pyinstaller_output_dir_name"
+          $zip_file_name = "$base_name.zip" # e.g., ReplayConverterGUI-x64.zip
+          $zip_file_path = "dist/$zip_file_name" # e.g., dist/ReplayConverterGUI-x64.zip
+
+          pyinstaller --name $base_name --onedir --windowed --icon=src/icon.png --target-arch=${{ matrix.pyinstaller_target_arch }} src/main.py
+
+          # Create a zip of the output directory created by PyInstaller
+          Compress-Archive -Path $full_pyinstaller_output_dir_path -DestinationPath $zip_file_path -Force
+
+          echo "BUILD_OUTPUT_NAME=$zip_file_name" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          echo "BUILD_OUTPUT_PATH=$zip_file_path" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
         shell: pwsh
 
       - name: Upload executable artifact (${{ matrix.arch }})
         uses: actions/upload-artifact@v4
         with:
           name: ReplayConverterGUI-Windows-${{ matrix.output_suffix }}
-          path: ${{ steps.build_exe.outputs.EXE_PATH }}
+          path: ${{ steps.build_exe.outputs.BUILD_OUTPUT_PATH }}
 
   create-release:
     needs: build
@@ -92,5 +101,5 @@ jobs:
           draft: false
           prerelease: ${{ steps.release_info.outputs.PRERELEASE }}
           files: |
-            artifacts/ReplayConverterGUI-Windows-x64/ReplayConverterGUI-x64.exe
-            artifacts/ReplayConverterGUI-Windows-arm64/ReplayConverterGUI-arm64.exe
+            artifacts/ReplayConverterGUI-Windows-x64/ReplayConverterGUI-x64.zip
+            artifacts/ReplayConverterGUI-Windows-arm64/ReplayConverterGUI-arm64.zip

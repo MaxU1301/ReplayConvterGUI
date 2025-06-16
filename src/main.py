@@ -20,8 +20,21 @@ class ReplayConverterApp:
         """
         self.root = root
         self.root.title("Replay Converter UI")
-        self.root.geometry("700x500")
+        self.root.geometry("700x600")
         self.root.minsize(650, 480)
+
+        # Set application icon
+        try:
+            # Assumes icon.png is in the same directory as main.py (the src directory)
+            icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icon.png")
+            if os.path.exists(icon_path):
+                self.app_icon = tk.PhotoImage(file=icon_path) # Keep a reference
+                self.root.iconphoto(True, self.app_icon)
+            else:
+                print(f"Warning: Application icon 'icon.png' not found in {os.path.dirname(os.path.abspath(__file__))}")
+        except tk.TclError as e:
+            # Handle cases where the icon format might not be supported or other Tk errors
+            print(f"Warning: Could not set application icon: {e}")
 
         # --- Instance Variables ---
         self.command_parts = []
@@ -126,7 +139,7 @@ class ReplayConverterApp:
         font_body = ('Segoe UI', 10)
         font_label = ('Segoe UI', 11, 'bold')
 
-        style.configure('.', font=font_body, background='#F0F0F0', foreground='#212121')
+        style.configure('.', font=font_body, foreground='#212121')
         style.configure('TLabel', font=font_body)
         style.configure('TButton', padding=8, width=12)
         style.configure('TLabelFrame', padding=10)

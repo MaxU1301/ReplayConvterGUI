@@ -240,17 +240,39 @@ class ReplayConverterApp:
                 os.makedirs(self.app_data_dir)
             except OSError as e:
                 print(f"Warning: Could not create settings directory {self.app_data_dir}: {e}")
-                return default_settings
+                # Fallback to default settings if directory creation fails,
+                # but still attempt auto-detection below.
+                settings = default_settings.copy() # Make a copy to modify
+                # Auto-detection logic will run on this copy.
+
+        # Initialize settings with defaults, then try to load and update
+        settings = default_settings.copy()
         try:
             with open(self.settings_file_path, 'r') as f:
                 loaded_settings = json.load(f)
                 # Merge loaded settings with defaults to ensure all keys are present
-                settings = default_settings.copy()
                 settings.update(loaded_settings)
-                return settings
         except (FileNotFoundError, json.JSONDecodeError):
             # File not found or invalid JSON, return defaults. File will be created on first save.
-            return default_settings
+            # 'settings' remains as default_settings.
+            pass
+        except Exception as e:
+            print(f"Warning: Error loading settings file {self.settings_file_path}: {e}")
+            # 'settings' remains as default_settings in case of other errors.
+            pass
+
+        # --- Auto-populate converter_path if empty and ReplayConverter.exe is found locally ---
+        if not settings.get("converter_path"): # Check if path is empty or not set
+            try:
+                local_converter_exe = "ReplayConverter.exe"
+                potential_path = resource_path(local_converter_exe)
+                if os.path.isfile(potential_path):
+                    settings["converter_path"] = potential_path
+                    print(f"INFO: Auto-detected and set ReplayConverter.exe path: {potential_path}")
+            except Exception as e:
+                print(f"DEBUG: Error during auto-detection of ReplayConverter.exe: {e}")
+        
+        return settings
 
     def save_settings(self):
         """Saves current settings to the JSON file."""
